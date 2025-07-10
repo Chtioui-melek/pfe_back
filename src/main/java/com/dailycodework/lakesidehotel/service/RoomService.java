@@ -6,6 +6,7 @@ import com.dailycodework.lakesidehotel.model.Room;
 import com.dailycodework.lakesidehotel.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.sql.rowset.serial.SerialBlob;
@@ -70,18 +71,28 @@ public class RoomService implements IRoomService {
     }
 
     @Override
+    @Transactional
     public Room updateRoom(Long roomId, String roomType, BigDecimal roomPrice, byte[] photoBytes) {
-        Room room = roomRepository.findById(roomId).get();
-        if (roomType != null) room.setRoomType(roomType);
-        if (roomPrice != null) room.setRoomPrice(roomPrice);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+
+        if (roomType != null && !roomType.isBlank()) {
+            room.setRoomType(roomType);
+        }
+
+        if (roomPrice != null) {
+            room.setRoomPrice(roomPrice);
+        }
+
         if (photoBytes != null && photoBytes.length > 0) {
             try {
                 room.setPhoto(new SerialBlob(photoBytes));
-            } catch (SQLException ex) {
-                throw new InternalServerException("Fail updating room");
+            } catch (SQLException e) {
+                throw new RuntimeException("Failed to update room photo", e);
             }
         }
-       return roomRepository.save(room);
+
+        return roomRepository.save(room);
     }
 
     @Override
